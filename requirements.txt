@@ -1,0 +1,4 @@
+matplotlib==3.8.0
+numpy==1.24.4
+pandas==2.0.3
+pygame==2.5.2
