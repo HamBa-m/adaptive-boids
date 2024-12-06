@@ -3,15 +3,15 @@ import random
 from optimiser import Optimiser
 
 class Bird:
-    def __init__(self, noise, max_speed, north_direction) -> None:
+    def __init__(self, radius, max_speed, optimizer_threshold, noise, north_direction) -> None:
         self.position = [random.randint(300, 700), random.randint(100, 500)]
         self.velocity =[north_direction[0] + random.uniform(-noise, noise), north_direction[1] + random.uniform(-noise, noise)]
         self.max_speed = max_speed
         self.neighbours = []
-        self.omega = [0.5, 0.1, 0.4, 0.0] # weights for alignment, cohesion, separation, randomness
+        self.omega = [0.3, 0.1, 0.6, 0.0] # weights for alignment, cohesion, separation, randomness
         self.noise = noise
-        self.radius = 80
-        self.optimiser = Optimiser(self)
+        self.radius = radius
+        self.optimiser = Optimiser(self, threshold=optimizer_threshold)
         
     def move(self):
         self.position[0] += self.velocity[0]
