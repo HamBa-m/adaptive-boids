@@ -20,6 +20,7 @@ class Flock:
         self.birds_peripheral = 0
         self.birds_central = 0
         self.variance_history = []
+        self.stats = []
         
     def move(self):
         for bird in self.birds:
@@ -133,6 +134,14 @@ class Flock:
         for i, bird in enumerate(self.birds):
             bird.velocity = new_velocities[i]
             bird.move()
+            if bird.position[0] < 0:
+                bird.position[0] += self.screen_size[0]
+            elif bird.position[0] > self.screen_size[0]:
+                bird.position[0] -= self.screen_size[0]
+            if bird.position[1] < 0:
+                bird.position[1] += self.screen_size[1]
+            elif bird.position[1] > self.screen_size[1]:
+                bird.position[1]-= self.screen_size[1]
         self.update_statistics()
         self.variance_history.append(self.compute_variance())
 
@@ -175,6 +184,76 @@ class Flock:
         avg_direction[1] /= len(self.birds)
         return avg_direction
     
+    # measure the cohesion of the flock
+    def cohesion(self) -> float:
+        avg_position = [0, 0]
+        for bird in self.birds:
+            avg_position[0] += bird.position[0]
+            avg_position[1] += bird.position[1]
+        avg_position[0] /= len(self.birds)
+        avg_position[1] /= len(self.birds)
+        cohesion = 0
+        for bird in self.birds:
+            cohesion += (bird.position[0] - avg_position[0])**2 + (bird.position[1] - avg_position[1])**2
+        return cohesion
+
+    # measure the average separation of the flock
+    def separation(self) -> float:
+        separation = 0
+        for bird in self.birds:
+            bird_separation = 0
+            for neighbour in bird.neighbours:
+                separation += distance(bird, neighbour)
+            separation += bird_separation / len(bird.neighbours) if bird.neighbours else 0
+        return separation / len(self.birds)
+
+    # measure the alignment variance of the flock
+    def alignment_variance(self) -> float:
+        avg_velocity = [0, 0]
+        for bird in self.birds:
+            avg_velocity[0] += bird.velocity[0]
+            avg_velocity[1] += bird.velocity[1]
+        avg_velocity[0] /= len(self.birds)
+        avg_velocity[1] /= len(self.birds)
+        variance = 0
+        for bird in self.birds:
+            variance += (bird.velocity[0] - avg_velocity[0])**2 + (bird.velocity[1] - avg_velocity[1])**2
+        return variance
+
+    # measure the number of cluster of birds in the flock
+    def clusters(self) -> int:
+        distances = [[0 for _ in range(self.size)] for _ in range(self.size)]
+        for i in range(self.size):
+            for j in range(self.size):
+                distances[i][j] = distance(self.birds[i], self.birds[j])
+        connected_components = 0
+        visited = [False for _ in range(self.size)]
+        for i in range(self.size):
+            if not visited[i]:
+                connected_components += 1
+                stack = [i]
+                while stack:
+                    j = stack.pop()
+                    visited[j] = True
+                    for k in range(self.size):
+                        if distances[j][k] < self.min_distance and not visited[k]:
+                            stack.append(k)
+        return connected_components
+    
+    def run_cmd(self, verbose=False):
+        # create a csv file to save statistics
+        with open('statistics.csv', 'w') as f:
+            f.write('cohesion,separation,alignment_variance,clusters\n')
+        self.running = True
+        while self.running:
+            self.update()
+            if verbose:
+                print(self.__str__())
+                # append to csv
+                with open('statistics.csv', 'a') as f:
+                    f.write(f'{self.cohesion()},{self.separation()},{self.alignment_variance()},{self.clusters()}\n')         
+        print(self.__str__())
+    
     def __str__(self) -> str:
         # return statistics
         return f'Variance: {self.compute_variance()}, Avg Neighbour Distance: {self.compute_avg_neighbour_distance()}, Avg Neighbours: {self.compute_avg_neighbours()}, Avg Direction: {self.compute_avg_direction()} \n \
@@ -190,16 +269,6 @@ class Flock:
         # draw the birds
         for bird in self.birds:
             pygame.draw.circle(self.screen, (0, 0, 0), (int(bird.position[0]), int(bird.position[1])), 3)            
-            
-        for bird in self.birds:
-            if bird.position[0] < 0:
-                bird.position[0] += self.screen_size[0]
-            elif bird.position[0] > self.screen_size[0]:
-                bird.position[0] -= self.screen_size[0]
-            if bird.position[1] < 0:
-                bird.position[1] += self.screen_size[1]
-            elif bird.position[1] > self.screen_size[1]:
-                bird.position[1]-= self.screen_size[1]
 
         for bird in self.birds:
             pygame.draw.line(self.screen, (255, 0, 0), (bird.position[0], bird.position[1]), (bird.position[0] + bird.velocity[0], bird.position[1] + bird.velocity[1]), 2)
@@ -284,3 +353,4 @@ class Flock:
                 f.write(f'{variance}\n')
         
         self.running = False
+        
