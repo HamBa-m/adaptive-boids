@@ -1,24 +1,47 @@
-# define a bird class from the boids algorithm
-import random
-from optimiser import Optimiser
+import numpy as np
+from config import SCREEN_SIZE, MAX_SPEED, ALIGNMENT_WEIGHT, COHESION_WEIGHT, SEPARATION_WEIGHT
 
 class Bird:
-    def __init__(self, radius, max_speed, optimizer_threshold, noise, north_direction) -> None:
-        self.position = [random.randint(300, 700), random.randint(100, 500)]
-        self.velocity =[north_direction[0] + random.uniform(-noise, noise), north_direction[1] + random.uniform(-noise, noise)]
-        self.max_speed = max_speed
-        self.neighbours = []
-        self.omega = [0.3, 0.1, 0.6, 0.0] # weights for alignment, cohesion, separation, randomness
-        self.noise = noise
-        self.radius = radius
-        self.optimiser = Optimiser(self, threshold=optimizer_threshold)
-        
+    """Class representing an individual bird (boid)."""
+
+    def __init__(self, position, velocity):
+        self.position = np.array(position, dtype=float)
+        self.velocity = np.array(velocity, dtype=float)
+
+    def limit_speed(self):
+        """Limit the bird's speed to the maximum."""
+        speed = np.linalg.norm(self.velocity)
+        if speed > MAX_SPEED:
+            self.velocity = (self.velocity / speed) * MAX_SPEED
+
     def move(self):
-        self.position[0] += self.velocity[0]
-        self.position[1] += self.velocity[1]
-        self.velocity[0] = min(self.velocity[0], self.max_speed)
-        self.velocity[1] = min(self.velocity[1], self.max_speed)
-        self.optimiser.update_weights()
-        
-    def __str__(self) -> str:
-        return f'Position: {self.position}, Velocity: {self.velocity}, Neighbours: {len(self.neighbours)}'
+        """Move the bird and wrap around screen edges."""
+        self.position += self.velocity
+        self.position %= SCREEN_SIZE
+
+    def calculate_new_velocity(self, neighbors):
+        """Calculate the new velocity based on alignment, cohesion, and separation."""
+        if neighbors:
+            # Alignment: Match velocity with neighbors
+            alignment = np.mean([bird.velocity for bird in neighbors], axis=0)
+            # Cohesion: Move towards the average position of neighbors
+            cohesion = np.mean([bird.position for bird in neighbors], axis=0) - self.position
+            # Separation: Avoid getting too close to neighbors
+            separation = -np.sum([bird.position - self.position for bird in neighbors], axis=0)
+
+            # Combine forces
+            new_velocity = (
+                self.velocity
+                + ALIGNMENT_WEIGHT * alignment
+                + COHESION_WEIGHT * cohesion
+                + SEPARATION_WEIGHT * separation
+            )
+            return self.limit_velocity(new_velocity)
+        return self.velocity
+
+    def limit_velocity(self, velocity):
+        """Ensure the given velocity does not exceed the max speed."""
+        speed = np.linalg.norm(velocity)
+        if speed > MAX_SPEED:
+            return (velocity / speed) * MAX_SPEED
+        return velocity
