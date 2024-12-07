@@ -52,3 +52,7 @@ class Flock:
     def calculate_kinetic_energy(self):
         velocities = np.array([bird.velocity for bird in self.birds])
         return 0.5 * np.mean(np.linalg.norm(velocities, axis=1) ** 2)
+    
+    def flock_barycenter(self):
+        positions = np.array([bird.position for bird in self.birds])
+        return np.mean(positions, axis=0)
