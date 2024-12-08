@@ -1,6 +1,6 @@
 # Simulation parameters
 SCREEN_SIZE = 800
-NUM_BIRDS = 100
+NUM_BIRDS = 200
 MAX_SPEED = 4
 K_NEAREST = 5
 BOID_SIZE = 4
